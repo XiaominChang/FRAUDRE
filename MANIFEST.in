@@ -1,0 +1,13 @@
+include src/pyproject.toml
+include src/cert/iag_ca_cert_chain.pem
+include src/install_packages.sh
+include src/conf/conf_dev.yml
+include src/data/dbt_model/dbt_project.yml
+# Exclude specific files or directories
+exclude README.md
+exclude pyproject.toml
+exclude MANIFEST.in
+exclude src/predict.py
+exclude src/refresh.py
+exclude src/train.py
+exclude src/features

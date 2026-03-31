@@ -1,0 +1,30 @@
+# Exclude unwanted files and dirs
+global-exclude __pycache__ *.py[cod] *.pyo
+
+# Remove unwanted directories
+prune __pycache__
+prune */__pycache__
+prune **/__pycache__
+prune */.ipynb_checkpoints
+prune **/.ipynb_checkpoints
+
+# Exclude secrets
+
+recursive-include model_scoring/utils *
+recursive-include model_scoring/queries *
+recursive-include model_scoring/trained_models *
+recursive-include model_scoring *
+exclude secrets.json
+exclude model_scoring/secrets.json
+exclude model_scoring/poetry.lock
+exclude model_package/model_scoring/secrets.json 
+recursive-exclude * __pycache__
+recursive-exclude model_scoring/.venv *
+recursive-exclude model_scoring/.devcontainer *
+recursive-exclude model_scoring/test_outputs *
+
+
+
+# Include .sh and .toml files in component folders
+include model_scoring/cert/*
+include model_scoring/proxy.conf

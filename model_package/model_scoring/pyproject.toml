@@ -1,0 +1,93 @@
+[tool.poetry]
+name = "model_scoring"
+version = "0.1.0"
+description = ""
+authors = ["Derek Ding <derek.ding@iag.com.au>"]
+readme = "README.md"
+# package-mode = false
+
+[tool.poetry.group.main.dependencies]
+python = ">=3.9,<3.11"
+# Core data processing
+numpy = "1.26.4"
+pandas = "2.1.3"
+pytz = "^2023.3"
+python-dateutil = "^2.8"
+types-python-dateutil = "^2.8"
+
+# Database connectivity
+sqlalchemy = "1.4.46"
+psycopg2-binary = "=2.9.6"
+
+# Machine Learning
+scikit-learn = "1.3.0"
+joblib = "1.2.0"
+numba = "^0.58"
+llvmlite = "^0.41"
+scipy = "1.13.1"
+protobuf = "<5.0.0"
+torchvision = "0.19.1"
+torch-geometric = "2.5.3"
+
+# Utilities & CLI
+click = "^8.1"
+cloudpickle = "^3.0"
+colorama = "^0.4"
+python-dotenv = "^0.20"
+python-json-logger = "^2.0"
+structlog = "^25.0"
+six = "^1.16"
+threadpoolctl = "^3.2"
+tqdm = "^4.65"
+tabulate = "^0.9"
+tzdata = "^2023.3"
+boto3 = "1.24.95"
+
+# Text processing
+networkx = "3.2"
+python-levenshtein = "^0.21"
+rapidfuzz = "^3.13"
+
+# Data formats & others
+pyarrow = "^15.0"
+markupsafe = "^2.0"
+regex = "^2023.6"
+slicer = "^0.0.7"
+psutil = "^7.0"
+DateTime = "^5.1"
+greenlet = "^2.0"
+matplotlib = "3.7.2"
+
+# Google Cloud / Vertex AI
+google-cloud-aiplatform = "1.83.0"
+google-cloud-secret-manager = "2.20.1"
+grpcio = "1.73.0" # 1.75.0 works as well
+
+# HTTP & Authentication
+requests-toolbelt = "^0.10"
+urllib3 = "^1.26"
+msal = "^1.31"
+
+# Package metadata
+importlib-metadata = "^7.1"
+packaging = "^24.0"
+shap = "^0.42"
+python-louvain = "^0.16"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.4"
+torch = "2.4.1"
+
+[[tool.poetry.source]]
+name = "nexus"
+url = "https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple/"
+priority = "primary"
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "supplemental"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

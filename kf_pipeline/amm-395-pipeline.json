@@ -1,0 +1,430 @@
+{
+  "components": {
+    "comp-create-scoring-component": {
+      "executorLabel": "exec-create-scoring-component",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "entry_py": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_gcs_blob_name": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-create-scoring-component-2": {
+      "executorLabel": "exec-create-scoring-component-2",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "entry_py": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_gcs_blob_name": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-create-scoring-component-3": {
+      "executorLabel": "exec-create-scoring-component-3",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "entry_py": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_gcs_blob_name": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-create-scoring-component-4": {
+      "executorLabel": "exec-create-scoring-component-4",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "entry_py": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_gcs_blob_name": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-create-scoring-component-5": {
+      "executorLabel": "exec-create-scoring-component-5",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "entry_py": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_gcs_blob_name": {
+            "parameterType": "STRING"
+          },
+          "model_python_package_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-create-scoring-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_scoring_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --index-url https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple --trusted-host nexus3.auiag.corp --no-warn-script-location 'kfp==2.13.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_scoring_component(model_python_package_name: str, \n                             model_python_package_gcs_blob_name: str, \n                             bucket_name: str,\n                             entry_py: str):\n\n        \"\"\"Component to run the data extraction for scoring.\n        \"\"\"\n        import os\n        import site\n        import subprocess\n\n        from google.cloud import storage\n        import logging\n        import importlib\n        import sys\n\n        # 1. Download the model package from GCS\n        blob = storage.Client().bucket(bucket_name).blob(model_python_package_gcs_blob_name)\n        local_file = './' + os.path.basename(model_python_package_gcs_blob_name)\n        blob.download_to_filename(local_file)\n\n        subprocess.check_call([\n            sys.executable, \"-m\", \"pip\", \"install\", \"--no-deps\", local_file,\n            \"--index-url\", \"https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple\",\n            \"--trusted-host\", \"nexus3.auiag.corp\",\n        ])\n\n        # 2. Locate package install path\n        site_packages = site.getsitepackages()[0]  # or use site.getusersitepackages()\n        package_path = os.path.join(site_packages, model_python_package_name)\n\n        if os.path.isdir(package_path):\n            os.chdir(package_path)\n            print(f\"Changed directory to: {os.getcwd()}\")\n        else:\n            raise FileNotFoundError(f\"Package not found: {package_path}\")\n        # Set up env with updated PYTHONPATH\n        model_package_path = os.path.join(package_path, \"model_package\")\n        env = os.environ.copy()\n        env[\"PYTHONPATH\"] = f\"{package_path}:{model_package_path}:{env.get('PYTHONPATH', '')}\"\n\n        # 3. Change working directory to package root and run build.sh\n        # os.chdir(package_path)\n        for script in ['install_packages.sh', 'get_edh_secrets.sh']:\n            if not os.path.exists(script):\n                raise FileNotFoundError(f\"Script not found: {script}\")\n            subprocess.check_call(['chmod', '+x', script])\n            # subprocess.run([f'./{script}'])\n            subprocess.run(['bash', script], check=True)\n\n        # 4. Run the main training module # could be model_package.model_scoring.predict\n        subprocess.run([\"python\", \"-m\", entry_py], env=env)\n\n"
+          ],
+          "image": "asia-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest",
+          "resources": {
+            "cpuLimit": 8.0,
+            "memoryLimit": 64.0,
+            "resourceCpuLimit": "8",
+            "resourceMemoryLimit": "64G"
+          }
+        }
+      },
+      "exec-create-scoring-component-2": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_scoring_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --index-url https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple --trusted-host nexus3.auiag.corp --no-warn-script-location 'kfp==2.13.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_scoring_component(model_python_package_name: str, \n                             model_python_package_gcs_blob_name: str, \n                             bucket_name: str,\n                             entry_py: str):\n\n        \"\"\"Component to run the data extraction for scoring.\n        \"\"\"\n        import os\n        import site\n        import subprocess\n\n        from google.cloud import storage\n        import logging\n        import importlib\n        import sys\n\n        # 1. Download the model package from GCS\n        blob = storage.Client().bucket(bucket_name).blob(model_python_package_gcs_blob_name)\n        local_file = './' + os.path.basename(model_python_package_gcs_blob_name)\n        blob.download_to_filename(local_file)\n\n        subprocess.check_call([\n            sys.executable, \"-m\", \"pip\", \"install\", \"--no-deps\", local_file,\n            \"--index-url\", \"https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple\",\n            \"--trusted-host\", \"nexus3.auiag.corp\",\n        ])\n\n        # 2. Locate package install path\n        site_packages = site.getsitepackages()[0]  # or use site.getusersitepackages()\n        package_path = os.path.join(site_packages, model_python_package_name)\n\n        if os.path.isdir(package_path):\n            os.chdir(package_path)\n            print(f\"Changed directory to: {os.getcwd()}\")\n        else:\n            raise FileNotFoundError(f\"Package not found: {package_path}\")\n        # Set up env with updated PYTHONPATH\n        model_package_path = os.path.join(package_path, \"model_package\")\n        env = os.environ.copy()\n        env[\"PYTHONPATH\"] = f\"{package_path}:{model_package_path}:{env.get('PYTHONPATH', '')}\"\n\n        # 3. Change working directory to package root and run build.sh\n        # os.chdir(package_path)\n        for script in ['install_packages.sh', 'get_edh_secrets.sh']:\n            if not os.path.exists(script):\n                raise FileNotFoundError(f\"Script not found: {script}\")\n            subprocess.check_call(['chmod', '+x', script])\n            # subprocess.run([f'./{script}'])\n            subprocess.run(['bash', script], check=True)\n\n        # 4. Run the main training module # could be model_package.model_scoring.predict\n        subprocess.run([\"python\", \"-m\", entry_py], env=env)\n\n"
+          ],
+          "image": "asia-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest",
+          "resources": {
+            "cpuLimit": 8.0,
+            "memoryLimit": 64.0,
+            "resourceCpuLimit": "8",
+            "resourceMemoryLimit": "64G"
+          }
+        }
+      },
+      "exec-create-scoring-component-3": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_scoring_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --index-url https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple --trusted-host nexus3.auiag.corp --no-warn-script-location 'kfp==2.13.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_scoring_component(model_python_package_name: str, \n                             model_python_package_gcs_blob_name: str, \n                             bucket_name: str,\n                             entry_py: str):\n\n        \"\"\"Component to run the data extraction for scoring.\n        \"\"\"\n        import os\n        import site\n        import subprocess\n\n        from google.cloud import storage\n        import logging\n        import importlib\n        import sys\n\n        # 1. Download the model package from GCS\n        blob = storage.Client().bucket(bucket_name).blob(model_python_package_gcs_blob_name)\n        local_file = './' + os.path.basename(model_python_package_gcs_blob_name)\n        blob.download_to_filename(local_file)\n\n        subprocess.check_call([\n            sys.executable, \"-m\", \"pip\", \"install\", \"--no-deps\", local_file,\n            \"--index-url\", \"https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple\",\n            \"--trusted-host\", \"nexus3.auiag.corp\",\n        ])\n\n        # 2. Locate package install path\n        site_packages = site.getsitepackages()[0]  # or use site.getusersitepackages()\n        package_path = os.path.join(site_packages, model_python_package_name)\n\n        if os.path.isdir(package_path):\n            os.chdir(package_path)\n            print(f\"Changed directory to: {os.getcwd()}\")\n        else:\n            raise FileNotFoundError(f\"Package not found: {package_path}\")\n        # Set up env with updated PYTHONPATH\n        model_package_path = os.path.join(package_path, \"model_package\")\n        env = os.environ.copy()\n        env[\"PYTHONPATH\"] = f\"{package_path}:{model_package_path}:{env.get('PYTHONPATH', '')}\"\n\n        # 3. Change working directory to package root and run build.sh\n        # os.chdir(package_path)\n        for script in ['install_packages.sh', 'get_edh_secrets.sh']:\n            if not os.path.exists(script):\n                raise FileNotFoundError(f\"Script not found: {script}\")\n            subprocess.check_call(['chmod', '+x', script])\n            # subprocess.run([f'./{script}'])\n            subprocess.run(['bash', script], check=True)\n\n        # 4. Run the main training module # could be model_package.model_scoring.predict\n        subprocess.run([\"python\", \"-m\", entry_py], env=env)\n\n"
+          ],
+          "image": "asia-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest",
+          "resources": {
+            "cpuLimit": 8.0,
+            "memoryLimit": 64.0,
+            "resourceCpuLimit": "8",
+            "resourceMemoryLimit": "64G"
+          }
+        }
+      },
+      "exec-create-scoring-component-4": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_scoring_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --index-url https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple --trusted-host nexus3.auiag.corp --no-warn-script-location 'kfp==2.13.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_scoring_component(model_python_package_name: str, \n                             model_python_package_gcs_blob_name: str, \n                             bucket_name: str,\n                             entry_py: str):\n\n        \"\"\"Component to run the data extraction for scoring.\n        \"\"\"\n        import os\n        import site\n        import subprocess\n\n        from google.cloud import storage\n        import logging\n        import importlib\n        import sys\n\n        # 1. Download the model package from GCS\n        blob = storage.Client().bucket(bucket_name).blob(model_python_package_gcs_blob_name)\n        local_file = './' + os.path.basename(model_python_package_gcs_blob_name)\n        blob.download_to_filename(local_file)\n\n        subprocess.check_call([\n            sys.executable, \"-m\", \"pip\", \"install\", \"--no-deps\", local_file,\n            \"--index-url\", \"https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple\",\n            \"--trusted-host\", \"nexus3.auiag.corp\",\n        ])\n\n        # 2. Locate package install path\n        site_packages = site.getsitepackages()[0]  # or use site.getusersitepackages()\n        package_path = os.path.join(site_packages, model_python_package_name)\n\n        if os.path.isdir(package_path):\n            os.chdir(package_path)\n            print(f\"Changed directory to: {os.getcwd()}\")\n        else:\n            raise FileNotFoundError(f\"Package not found: {package_path}\")\n        # Set up env with updated PYTHONPATH\n        model_package_path = os.path.join(package_path, \"model_package\")\n        env = os.environ.copy()\n        env[\"PYTHONPATH\"] = f\"{package_path}:{model_package_path}:{env.get('PYTHONPATH', '')}\"\n\n        # 3. Change working directory to package root and run build.sh\n        # os.chdir(package_path)\n        for script in ['install_packages.sh', 'get_edh_secrets.sh']:\n            if not os.path.exists(script):\n                raise FileNotFoundError(f\"Script not found: {script}\")\n            subprocess.check_call(['chmod', '+x', script])\n            # subprocess.run([f'./{script}'])\n            subprocess.run(['bash', script], check=True)\n\n        # 4. Run the main training module # could be model_package.model_scoring.predict\n        subprocess.run([\"python\", \"-m\", entry_py], env=env)\n\n"
+          ],
+          "image": "asia-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest",
+          "resources": {
+            "cpuLimit": 8.0,
+            "memoryLimit": 64.0,
+            "resourceCpuLimit": "8",
+            "resourceMemoryLimit": "64G"
+          }
+        }
+      },
+      "exec-create-scoring-component-5": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_scoring_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --index-url https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple --trusted-host nexus3.auiag.corp --no-warn-script-location 'kfp==2.13.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_scoring_component(model_python_package_name: str, \n                             model_python_package_gcs_blob_name: str, \n                             bucket_name: str,\n                             entry_py: str):\n\n        \"\"\"Component to run the data extraction for scoring.\n        \"\"\"\n        import os\n        import site\n        import subprocess\n\n        from google.cloud import storage\n        import logging\n        import importlib\n        import sys\n\n        # 1. Download the model package from GCS\n        blob = storage.Client().bucket(bucket_name).blob(model_python_package_gcs_blob_name)\n        local_file = './' + os.path.basename(model_python_package_gcs_blob_name)\n        blob.download_to_filename(local_file)\n\n        subprocess.check_call([\n            sys.executable, \"-m\", \"pip\", \"install\", \"--no-deps\", local_file,\n            \"--index-url\", \"https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple\",\n            \"--trusted-host\", \"nexus3.auiag.corp\",\n        ])\n\n        # 2. Locate package install path\n        site_packages = site.getsitepackages()[0]  # or use site.getusersitepackages()\n        package_path = os.path.join(site_packages, model_python_package_name)\n\n        if os.path.isdir(package_path):\n            os.chdir(package_path)\n            print(f\"Changed directory to: {os.getcwd()}\")\n        else:\n            raise FileNotFoundError(f\"Package not found: {package_path}\")\n        # Set up env with updated PYTHONPATH\n        model_package_path = os.path.join(package_path, \"model_package\")\n        env = os.environ.copy()\n        env[\"PYTHONPATH\"] = f\"{package_path}:{model_package_path}:{env.get('PYTHONPATH', '')}\"\n\n        # 3. Change working directory to package root and run build.sh\n        # os.chdir(package_path)\n        for script in ['install_packages.sh', 'get_edh_secrets.sh']:\n            if not os.path.exists(script):\n                raise FileNotFoundError(f\"Script not found: {script}\")\n            subprocess.check_call(['chmod', '+x', script])\n            # subprocess.run([f'./{script}'])\n            subprocess.run(['bash', script], check=True)\n\n        # 4. Run the main training module # could be model_package.model_scoring.predict\n        subprocess.run([\"python\", \"-m\", entry_py], env=env)\n\n"
+          ],
+          "image": "asia-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest",
+          "resources": {
+            "cpuLimit": 8.0,
+            "memoryLimit": 64.0,
+            "resourceCpuLimit": "8",
+            "resourceMemoryLimit": "64G"
+          }
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "A pipeline to run the scoring code",
+    "name": "amm-395-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "create-scoring-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-scoring-component"
+          },
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "entry_py": {
+                "componentInputParameter": "op_extract"
+              },
+              "model_python_package_gcs_blob_name": {
+                "componentInputParameter": "model_python_package_gcs_blob_name"
+              },
+              "model_python_package_name": {
+                "componentInputParameter": "model_python_package_name"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Data Extraction"
+          }
+        },
+        "create-scoring-component-2": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-scoring-component-2"
+          },
+          "dependentTasks": [
+            "create-scoring-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "entry_py": {
+                "componentInputParameter": "op_transform"
+              },
+              "model_python_package_gcs_blob_name": {
+                "componentInputParameter": "model_python_package_gcs_blob_name"
+              },
+              "model_python_package_name": {
+                "componentInputParameter": "model_python_package_name"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Data Transformation"
+          }
+        },
+        "create-scoring-component-3": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-scoring-component-3"
+          },
+          "dependentTasks": [
+            "create-scoring-component-2"
+          ],
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "entry_py": {
+                "componentInputParameter": "op_construct"
+              },
+              "model_python_package_gcs_blob_name": {
+                "componentInputParameter": "model_python_package_gcs_blob_name"
+              },
+              "model_python_package_name": {
+                "componentInputParameter": "model_python_package_name"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Graph Construction"
+          }
+        },
+        "create-scoring-component-4": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-scoring-component-4"
+          },
+          "dependentTasks": [
+            "create-scoring-component-3"
+          ],
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "entry_py": {
+                "componentInputParameter": "op_inference"
+              },
+              "model_python_package_gcs_blob_name": {
+                "componentInputParameter": "model_python_package_gcs_blob_name"
+              },
+              "model_python_package_name": {
+                "componentInputParameter": "model_python_package_name"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Model Scoring"
+          }
+        },
+        "create-scoring-component-5": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-scoring-component-5"
+          },
+          "dependentTasks": [
+            "create-scoring-component-4"
+          ],
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "entry_py": {
+                "componentInputParameter": "op_output"
+              },
+              "model_python_package_gcs_blob_name": {
+                "componentInputParameter": "model_python_package_gcs_blob_name"
+              },
+              "model_python_package_name": {
+                "componentInputParameter": "model_python_package_name"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "EDH Writing"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bucket_name": {
+          "parameterType": "STRING"
+        },
+        "model_python_package_gcs_blob_name": {
+          "parameterType": "STRING"
+        },
+        "model_python_package_name": {
+          "parameterType": "STRING"
+        },
+        "op_construct": {
+          "defaultValue": "utils.community_detection.graph_construction",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "op_extract": {
+          "defaultValue": "utils.data_extraction.data_extraction",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "op_inference": {
+          "defaultValue": "utils.community_detection.model_scoring",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "op_output": {
+          "defaultValue": "utils.data_output.edh_writing",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "op_transform": {
+          "defaultValue": "utils.data_transformation.data_transformation",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.13.0"
+}

@@ -1,0 +1,40 @@
+dev_config:
+  # data and features
+  data:
+    db: EDH_PROD
+    host: iagdcaprod.auiag.corp
+    port: 5432
+    database: iadpprod  # read-only
+    schema: dl_analytics
+    type: postgres
+  feature:
+    id_features:
+      - claim_number
+      - claim_lodgement_date
+      - claim_loss_date
+      - party_name
+      - glass_job_type
+    num_features:  # numerical features
+      - sum_insured
+    bnr_features:  [] # binary features, placeholder
+    ord_features: [] # ordinal features, placeholder
+
+    ohe_features: # other categorical features
+      - sum_insured_type_name
+      - cause_of_loss_name
+  score:
+    output-db: EDH_NONPROD
+    output-database: iadpsas  # write-only
+  model:
+    target_feature:
+      - glass_rp_flag
+    condition_start: "2023-10-01"
+    condition_end: "2024-04-30"
+    model_start_date: "2023-10-01"
+    model_end_date: "2024-01-31"
+    fut_start_date: "2024-02-01"
+    fut_end_date: "2024-04-30"
+    condition_policy: # only modelling policy brands
+      - NRMA
+      - SGIC
+      - SGIO

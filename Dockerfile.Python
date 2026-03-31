@@ -1,0 +1,48 @@
+FROM private.docker.nexus3.auiag.corp/analytics-platform/images/models/aap-prod-developer-artifacts-repo/model-docker-image/ubuntu2004_py39:bb318f0e716c0ffd2524390c2f71498c6e724487 AS base
+# FROM private.docker.nexus3.auiag.corp/analytics-platform/images/models/aap-dev-developer-artifacts-repo/model-docker-image/ubuntu2004_py39:v1.01 AS base
+RUN mkdir -p /home/analytics-user/model
+
+# Copy the current directory contents into the container at /app
+COPY ./src /home/analytics-user/model/src/
+COPY ./library /home/analytics-user/model/library/
+COPY ./get_edh_secrets.sh /home/analytics-user/model/
+COPY ./predictPython.sh /home/analytics-user/model/
+COPY ./requirements2.txt /home/analytics-user/model/
+#COPY ./Pipfile /home/analytics-user/model/
+#COPY ./Pipfile.lock /home/analytics-user/model/
+COPY ./patching_vulne.sh /home/analytics-user/model/
+#COPY ./secrets.json /home/analytics-user/model/secrets.json
+
+WORKDIR /home/analytics-user/model/
+
+USER root
+
+# Install user added packages to the base environment
+RUN python3.9 -m pip install -r /home/analytics-user/model/requirements2.txt
+
+#RUN python3.9 -m pip install --upgrade cryptography==41.0.3
+#RUN python3.9 -m pip install --upgrade grpcio==1.56.2
+
+#RUN pip install pipenv
+#RUN pipenv install --system
+
+RUN sed -i s/SECLEVEL=2/SECLEVEL=1/g /etc/ssl/openssl.cnf
+
+# Patches Vulnerabilties
+RUN apt-get update
+RUN apt-get dist-upgrade -y
+
+#RUN gcloud components update
+RUN bash /home/analytics-user/model/patching_vulne.sh
+
+
+FROM base AS runner
+
+# Makes EDH creds executable
+RUN chmod +x get_edh_secrets.sh
+RUN chmod +x ./predictPython.sh
+
+
+# Run app.py when the container launches
+#CMD ["/bin/bash", "./predictPython.sh"]
+ENTRYPOINT ["/home/analytics-user/model/predictPython.sh"]

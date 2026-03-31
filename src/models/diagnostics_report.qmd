@@ -1,0 +1,258 @@
+---
+title: Model Diagnostics
+format: html
+toc: true
+toc-location: left
+---
+
+```{python}
+# | echo: false
+# | output: false
+
+import os
+import sys
+import numpy as np
+from datetime import datetime
+import matplotlib.pyplot as plt
+import seaborn as sns
+import shap
+from sklearn.metrics import confusion_matrix, recall_score, RocCurveDisplay, \
+                            classification_report, precision_recall_curve
+from IPython.display import Markdown
+from tabulate import tabulate
+import joblib
+import pathlib
+# Get the current working directory
+cur_dir = pathlib.Path.cwd()
+
+# Alternatively, you can get the directory of the notebook if using Jupyter
+# cur_path = pathlib.Path().resolve().parent
+
+# Check if cur_path is in locals()
+if 'cur_path' not in locals():
+    # Navigate to the parent directories as needed
+    cur_path = cur_dir.parent.parent.absolute()
+src_loc = cur_path.joinpath("src")
+sys.path.append(str(cur_path))
+sys.path.append(str(src_loc))
+
+from src.utils.diag_utils import avse, avse_pred, calculate_gains, \
+    partial_dependence_plot, prec_rec_thresh, target_capture_curve, utility_functions
+from src.utils.utils import load_data
+from src.conf import Conf
+
+# Set threshold using in the report
+threshold = 0.8
+
+# Initialize SHAP for visualization
+shap.initjs()
+
+# Load configuration
+confparam_path = cur_path.joinpath("src", "conf", "conf_dev.yml")
+dataparam_path = cur_path.joinpath("src", "data", "dbt_model", "dbt_project.yml")
+# s_number will be replaced in python
+s_number = {{s_number}}  # Placeholder for s_number
+conf = Conf(confparam_path, dataparam_path, s_number)
+
+```
+
+```{python}
+# | echo: false
+
+# Read in model data
+# feature names
+id_features, num_features, bnr_features, ord_features, ohe_features, target_feature, colnames = load_data(
+         conf.model_gs, "data_input_cols", conf.bucket_name)
+# combined train data
+combined_df_train = load_data(conf.stag_gs, 'combined_df_train', conf.bucket_name, 'parquet')
+# combined test data
+combined_df_test = load_data(conf.stag_gs, 'combined_df_test', conf.bucket_name, 'parquet')
+# diag_dict data
+temp = load_data(conf.stag_gs, "diagnostics_data", conf.bucket_name)
+locals().update(temp)
+
+doc_title = "Diagnostics for " + model_name
+
+```
+
+```{python}
+#| echo: false
+#| output: asis
+print(datetime.today().strftime('%Y-%m-%d'))
+```
+
+# Model Information
+
+::: {.panel-tabset}
+##  Specification
+```{python}
+#| echo: false
+#| output: asis
+
+print(doc_title + "\n")
+print("Target = " + targets + "\n")
+print(comments)
+```
+
+## Parameters
+```{python}
+#| echo: false
+#| output: asis
+
+if model_params is not None:
+    for key,value in model_params.items():
+        print("{key}: {value} \n".format(key=key, value = value))
+else:
+    print("Model parameters have not been provided")
+```
+
+## Features
+```{python}
+#| echo: false
+#| output: asis
+
+print(features)
+```
+
+:::
+
+# Overall Diagnostics
+## SHAP Summary
+```{python}
+#| output: asis
+#| echo: false
+sample_n = 500 if combined_df_train.shape[0] > 500 else combined_df_train.shape[0]
+sample = combined_df_train[colnames].sample(n = sample_n)
+
+explainer = shap.TreeExplainer(model_object)
+shap_values = explainer.shap_values(sample)
+shap.summary_plot(shap_values, sample, max_display = 30)
+
+```
+
+## SHAP Bar
+```{python}
+#| output: asis
+#| echo: false
+shap.summary_plot(shap_values, sample, plot_type="bar", max_display=30)
+
+```
+
+
+## AvsE Predictor Plot
+### Train
+```{python}
+#| output: asis
+#| echo: false
+ 
+fig = avse_pred(combined_df_train['y'], combined_df_train['y_score'], combined_df_train[colnames])
+```
+
+### Test
+```{python}
+#| output: asis
+#| echo: false
+ 
+fig = avse_pred(combined_df_test['y'], combined_df_test['y_score'], combined_df_test[colnames])
+```
+
+## Gains Plot
+### Train
+```{python}
+#| output: asis
+#| echo: false
+fig = calculate_gains(combined_df_train['y'], combined_df_train['y_score'], combined_df_train[colnames])
+```
+
+### Test
+```{python}
+#| output: asis
+#| echo: false
+fig = calculate_gains(combined_df_test['y'], combined_df_test['y_score'], combined_df_test[colnames])
+```
+
+## ROC Plot
+### Train
+```{python}
+#| echo: false
+RocCurveDisplay.from_predictions(combined_df_train['y'], combined_df_train['y_score'])
+plt.show()
+
+```
+
+### Test
+```{python}
+#| echo: false
+RocCurveDisplay.from_predictions(combined_df_test['y'], combined_df_test['y_score'])
+plt.show()
+
+```
+
+## Threshold vs precision & recall
+```{python}
+#| echo: false
+
+# Calculate values
+
+tr_precision, tr_recall, tr_thrh = precision_recall_curve(combined_df_train['y'], combined_df_train['y_score'])
+te_precision, te_recall, te_thrh = precision_recall_curve(combined_df_test['y'], combined_df_test['y_score'])
+
+
+```
+
+
+### Train
+```{python}
+#| echo: false
+
+fig = prec_rec_thresh(tr_precision, tr_recall, tr_thrh)
+
+```
+
+### Test
+```{python}
+#| echo: false
+
+fig = prec_rec_thresh(te_precision, te_recall, te_thrh)
+
+```
+
+## Confusion Matrices
+```{python}
+#| echo: false
+
+# Calculate threshold and assign 0/1 prediction
+
+y_train_pred = [(value>threshold).astype(int) for value in combined_df_train['y_score'].values]
+y_test_pred = [(value>threshold).astype(int) for value in combined_df_test['y_score'].values]
+
+```
+
+
+### Train
+```{python}
+#| echo: false
+
+print('Recall score is {RECALL_SCORE} when using {FLAG} as threshold'.\
+      format(RECALL_SCORE=recall_score(combined_df_train['y'],y_train_pred), FLAG=threshold))
+print('Classification report:')
+print(classification_report(combined_df_train['y'],y_train_pred))
+cf_matrix = confusion_matrix(combined_df_train['y'],y_train_pred)
+sns.heatmap(cf_matrix/np.sum(cf_matrix), annot=True, 
+            fmt='.2%', cmap='Blues')
+
+```
+
+### Test
+```{python}
+#| echo: false
+
+print('Recall score is {RECALL_SCORE} when using {FLAG} as threshold'.\
+      format(RECALL_SCORE=recall_score(combined_df_test['y'],y_test_pred), FLAG=threshold))
+print('Classification report:')
+print(classification_report(combined_df_test['y'],y_test_pred))
+cf_matrix = confusion_matrix(combined_df_test['y'],y_test_pred)
+sns.heatmap(cf_matrix/np.sum(cf_matrix), annot=True, 
+            fmt='.2%', cmap='Blues')
+
+```

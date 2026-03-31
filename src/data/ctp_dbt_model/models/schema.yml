@@ -1,0 +1,128 @@
+
+version: 2
+
+
+models:
+  - name: ctp_claims_data_dbt
+    description: "claim data model built in dbt as view and it will be used for extract claim features; data is at the claim level"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+
+models:
+  - name: ctp_claim_features_dbt
+    description: "claim data model built in dbt as view and it will be used for final modelling data; data is at the claim level"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null             
+
+models:
+  - name: ctp_customer_data_dbt
+    description: "customer data model built in dbt as view and it will be used for final modelling data; data is at the policy level"
+    columns:
+      - name: policy_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null  
+
+
+  - name: ctp_policy_transaction_payment_dbt
+    description: "policy payment transactions made annually created in dbt as ephemeral and it will be used for final policy payment data"
+    columns:
+      - name: policy_identifier
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+
+
+  - name: ctp_policy_payments_data_dbt
+    description:  "claims payment model created in dbt as view"
+    columns:
+      - name: policy_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+          
+
+  - name: ctp_claim_payments_data_dbt
+    description: "claims payment model created in dbt as view"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+
+  - name: ctp_injury_data_dbt
+    description: "medical and injury model created in dbt as view"
+    columns: 
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+
+
+  - name: ctp_policy_huon_dbt
+    description: "policy huon model created in dbt as view"
+    columns:
+      - name: policy_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null  
+
+  - name: ctp_policy_derived_features_dbt
+    description: "policy model created in dbt as view"
+    columns:
+      - name: policy_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null  
+  
+  # - name: ctp_indicators_v5_dbt
+  #   description: "v4 model created in dbt as view"
+  #   columns:
+  #     - name: policy_number
+  #       description: "The primary key for this table"
+  #       tests:
+  #         - unique
+  #         - not_null   
+
+
+  - name: ctp_third_party_data_dbt
+    description: "third-party data model created in dbt as view"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+
+
+  - name: ctp_final_modelling_data_dbt
+    description: "final data model in dbt as table"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   
+  - name: ctp_contact_data_dbt
+    description: "contact data model"
+    columns:
+      - name: claim_number
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null   

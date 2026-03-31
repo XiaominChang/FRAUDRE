@@ -1,0 +1,144 @@
+[tool.poetry]
+name = "amm-3333"
+version = "0.1.0"
+description = ""
+authors = ["Derek Ding <derek.ding@iag.com.au>"]
+readme = "README.md"
+# package-mode = false
+packages = [
+  { include = "model_package" },
+  { include = "model_scoring", from = "model_package" },
+]
+
+
+[tool.poetry.group.main.dependencies]
+python = ">=3.9,<3.11"
+pyzmq = "^26.0.3"
+python-dateutil = "^2.9.0.post0"
+python-dotenv = "1.0.0"
+python-iso639 = "2023.6.15"
+python-json-logger = "2.0.7"
+python-magic = "0.4.27"
+python-multipart = "0.0.6"
+tornado = "^6.4"
+sqlalchemy = "1.4.46"
+numpy = "1.26.4"
+MarkupSafe = "2.1.2"
+marshmallow = "3.20.1"
+psutil = "^6.0.0"
+pytz = "^2024.1"
+pandas = "2.1.1"
+pydantic = "2.5.0"
+tabulate = "^0.9.0"
+google-cloud-secret-manager = "^2.20.1"
+python-pptx = "0.6.21"
+boto3 = "1.24.95"
+pyarrow = "<18.0.0"
+protobuf = "<5.0.0"
+hydra-core = "^1.3.2"
+Markdown = "3.5"
+google-cloud-aiplatform = "1.83.0"
+structlog = "^25.4.0"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "8.16.1"
+ipython-genutils = "0.2.0"
+ipywidgets = "8.1.1"
+ipykernel = "^6.29.4"
+jupyter-client = "^8.6.2"
+jupyter-core = "^5.7.2"
+requests-toolbelt = "0.10.1"
+mkl = "^2024.2.0"
+kfp = "^2.13.0"
+google-cloud-logging = "^3.12.1"
+
+[[tool.poetry.source]]
+name = "nexus"
+url = "https://nexus3.auiag.corp/repos/repository/ddo-pypi/simple/"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "supplemental"
+
+# [tool.poetry.requires-plugins]
+# poetry-plugin-export = ">=1.8"
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[tool.isort]
+line_length = 120
+known_third_party = ["pandas", "pathlib"]
+skip = ["sys.path.append","src.*",".ipynb_checkpoints"]
+
+[tool.pylint.master]
+extension-pkg-allow-list = ["farmhash"]
+ignore = [".ipynb_checkpoints"]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = [
+  "C0103",  # allow different variable naming styles
+  "C0114",  # missing-module-docstring
+  "C0116",  # missing-function-docstring
+  "C0301",  # allow slightly long lines
+  "C0415",  # import-outside-toplevel
+  "C0413",  # import-from-not-at-top-level
+  "E1120",  # no-value-for-parameter
+  "R0801",  # similar lines in files
+  "R0913",  # too-many-arguments
+  "R0914",  # too-many-locals
+  "R0917",  # too-many-positional-arguments
+  "W0105",  # string-interpolation
+  "W0511",  # TODO notes
+  "W1201",  # logging-fstring-interpolation
+  "W1203",  # logging-format-interpolation
+  "W1514",  # unspecified-encoding
+  "C0209",  # consider-using-f-string
+  "R0912",  # too-many-branches
+  "R0911",  # too-many-return-statements
+  "R0915",  # too-many-statements
+  "C0207",  # consider-using-dict-items
+  "W0718",  # do-not-use-assert
+  "W0102",  # dangerous-default-value
+  "W0621",  # redefined-outer-name
+  "E0606",  # used-before-assignment
+  "C0411",  # wrong-import-order
+  "W0622",  # redefined-builtin
+  "W0719",  # raise-missing-from
+  "W0707",  # invalid-overridden-method
+  "R1705",  # no-else-return
+  "C0123",  # eval-used
+  "C0325",  # superfluous-parens
+  "R1719",  # simplifiable-if-expression
+  "R1710",  # inconsistent-return-statements
+  "W0613",  # unused-argument
+  "R0903",  # too-few-public-methods
+  "W1309",  # f-string-without-interpolation
+  "W0404",  # reimported
+  "R0902",  # too-many-instance-attributes
+  "R1702",  # too-many-nested-blocks
+  "C0412",  # import-outside-toplevel
+  "E0401",  # import-error
+  "E0611",  # no-name-in-module
+  "E1101",  # no-member
+]
+fail-under = 8.0
+
+[tool.pylint.'FORMAT']
+max-line-length = 120
+
+[tool.pylint.'REPORTS']
+output-format = "colorized"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:pydantic.*"
+]
